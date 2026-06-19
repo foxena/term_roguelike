@@ -87,7 +87,7 @@ export function spawnClassAbility(
   switch (p.class) {
     case "warrior": {
       // Whirlwind cleave — full 360 melee
-      meleeArc(p, enemies, projs, 18, 40, angle, Math.PI, C.warrior.r, C.warrior.g, C.warrior.b, particles, camera, run ?? { kills:0,gold:0,damageTaken:0,roomsCleared:0,floor:1,essence:0 })
+      meleeArc(p, enemies, projs, 18, 40, angle, Math.PI, C.warrior.r, C.warrior.g, C.warrior.b, particles, camera, run ?? { kills:0,gold:0,damageTaken:0,roomsCleared:0,floor:1,essence:0,itemIds:[] })
       particles.burst(p.x, p.y, 16, C.warrior.r, C.warrior.g, C.warrior.b, 80, 0.4, 2)
       camera.shake(5, 0.15)
       p.abilityMaxCd = 1.2
@@ -143,7 +143,7 @@ export function spawnClassAbility(
                        0, 0, C.rogue.r, C.rogue.g, C.rogue.b, 0.3, 3)
       }
       p.x = nx; p.y = ny
-      meleeArc(p, enemies, projs, 15, 28, angle, Math.PI * 0.7, C.rogue.r, C.rogue.g, C.rogue.b, particles, camera, run ?? { kills:0,gold:0,damageTaken:0,roomsCleared:0,floor:1,essence:0 })
+      meleeArc(p, enemies, projs, 15, 28, angle, Math.PI * 0.7, C.rogue.r, C.rogue.g, C.rogue.b, particles, camera, run ?? { kills:0,gold:0,damageTaken:0,roomsCleared:0,floor:1,essence:0,itemIds:[] })
       p.invuln = 0.15
       p.abilityMaxCd = 1.0
       break

@@ -20,6 +20,8 @@ import { drawHud, drawDeathScreen, drawPauseScreen } from "../render/hud.ts"
 import { drawMinimap } from "../render/minimap.ts"
 import { spawnClassProjectile, spawnClassAbility } from "./classes/classactions.ts"
 import { C } from "../engine/colors.ts"
+import { pickItems, applyItem, baseStats, type ItemDef, type PlayerStats } from "./items.ts"
+import { drawItemRoom, drawShopRoom } from "../render/screens.ts"
 
 const FIXED_DT = 1 / 60
 const FLOW_RETICK = 0.22
@@ -60,6 +62,13 @@ export class GameScene implements Scene {
   private fps = 60
   private waveNum = 0
   private roomEnemyCount = 0
+  // Phase 4: items
+  private stats: PlayerStats = baseStats()
+  private heldItems: ItemDef[] = []
+  private uiState: "none" | "treasure" | "shop" = "none"
+  private uiItems: ItemDef[] = []
+  private uiPrices: number[] = []
+  private uiSelected = 0
 
   constructor(public className: string = "warrior") {}
 
@@ -78,7 +87,8 @@ export class GameScene implements Scene {
     this.run = makeRun()
     this.t = 0; this.paused = false; this.state = "playing"; this.waveNum = 0
     this.enemies.count = 0; this.projs.count = 0; this.particles.count = 0
-    this.spawnTimer = 1.5
+    this.spawnTimer = 1.5; this.stats = baseStats(); this.heldItems = []
+    this.uiState = "none"; this.uiSelected = 0
     this._spawnWave(6)
     this.camera.snap(this.player.x, this.player.y, 100, 50)
   }
@@ -100,6 +110,28 @@ export class GameScene implements Scene {
 
     if (floorRoom.type === "combat" && !floorRoom.cleared) this._spawnWave(6 + this.run.roomsCleared * 2)
     if (floorRoom.type === "boss" && !floorRoom.cleared) this._spawnWave(12)
+    if (floorRoom.type === "treasure" && !floorRoom.cleared) {
+      floorRoom.cleared = true
+      this.uiItems = pickItems(3, this.rng)
+      this.uiSelected = 0; this.uiState = "treasure"
+    }
+    if (floorRoom.type === "shop" && !floorRoom.cleared) {
+      this.uiItems = pickItems(4, this.rng)
+      this.uiPrices = this.uiItems.map(i => {
+        const base = { common:4, uncommon:8, rare:16, legendary:30 }[i.rarity]
+        return base + this.run.floor * 2
+      })
+      this.uiSelected = 0; this.uiState = "shop"
+    }
+  }
+
+  private _applyStatsToPlayer(): void {
+    const p = this.player, s = this.stats
+    p.speed = 90 * s.speedMult
+    const maxHp = Math.max(10, 100 + s.hpBonus)
+    if (maxHp > p.maxHp) { p.hp += maxHp - p.maxHp }
+    p.maxHp = maxHp
+    p.hp = Math.min(p.hp, p.maxHp)
   }
 
   private _recomputeFlow(): void {
@@ -156,6 +188,34 @@ export class GameScene implements Scene {
 
   update(dt: number, input: InputState): void {
     if (input.map) this.showMap = !this.showMap
+
+    // Handle item / shop UI
+    if (this.uiState !== "none") {
+      if (input.raw === "up" || input.raw === "k") this.uiSelected = Math.max(0, this.uiSelected - 1)
+      if (input.raw === "down" || input.raw === "j") this.uiSelected = Math.min(this.uiItems.length - 1, this.uiSelected + 1)
+      if (input.confirm) {
+        const item = this.uiItems[this.uiSelected]
+        if (this.uiState === "treasure") {
+          this.heldItems.push(item); applyItem(this.stats, item)
+          this.run.itemIds.push(item.id)
+          this._applyStatsToPlayer()
+          this.uiState = "none"
+        } else if (this.uiState === "shop") {
+          const price = this.uiPrices[this.uiSelected]
+          if (this.run.gold >= price) {
+            this.run.gold -= price; this.heldItems.push(item)
+            applyItem(this.stats, item); this.run.itemIds.push(item.id)
+            this._applyStatsToPlayer()
+            this.uiItems.splice(this.uiSelected, 1); this.uiPrices.splice(this.uiSelected, 1)
+            this.uiSelected = Math.min(this.uiSelected, this.uiItems.length - 1)
+            if (this.uiItems.length === 0) this.uiState = "none"
+          }
+        }
+      }
+      if (input.pause || input.raw === "e") this.uiState = "none"
+      return
+    }
+
     if (input.pause && this.state === "playing") this.paused = !this.paused
     if (this.paused || this.state === "dead") return
 
@@ -202,6 +262,11 @@ export class GameScene implements Scene {
     if (input.aimX !== 0 || input.aimY !== 0) {
       const al = Math.sqrt(input.aimX**2 + input.aimY**2)
       p.aimX = input.aimX / al; p.aimY = input.aimY / al
+    }
+
+    // HP regen
+    if (this.stats.hpRegenRate > 0) {
+      p.hp = Math.min(p.maxHp, p.hp + this.stats.hpRegenRate * dt)
     }
 
     if ((input.aimX !== 0 || input.aimY !== 0) && p.class !== "warrior" && p.class !== "paladin") {
@@ -363,6 +428,8 @@ export class GameScene implements Scene {
     this.dmgNums.draw(buffer, camX, camY, ROOM_SCALE)
     drawMinimap(buffer, this.floor, this.currentFloorRoom.id, cW, cH)
     drawHud(buffer, this.player, this.run, this.fps, cW, cH)
+    if (this.uiState === "treasure") drawItemRoom(buffer, this.uiItems, this.uiSelected, cW, cH, this.run.gold)
+    if (this.uiState === "shop") drawShopRoom(buffer, this.uiItems, this.uiPrices, this.uiSelected, cW, cH, this.run.gold)
     if (this.state === "dead") drawDeathScreen(buffer, this.run, this.run.kills, cW, cH)
     if (this.paused) drawPauseScreen(buffer, cW, cH)
   }
