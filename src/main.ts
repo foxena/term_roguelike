@@ -1,34 +1,65 @@
-import { createCliRenderer, BoxRenderable, type KeyEvent } from "@opentui/core"
-import { Palette } from "./core/colors.ts"
-import { World } from "./world/world.ts"
-import { drawGame } from "./render/render.ts"
+// NEONFALL — entry point (working title).
+//
+// Phase 0 bootstrap: proves the neon pixel pipeline as the live `bun start`
+// build. It renders an animated neon title screen. Gameplay systems (engine
+// loop, classes, rooms, progression) land in later phases — see docs/ROADMAP.md
+// and docs/STATUS.md for exactly what's next.
+import { createCliRenderer, BoxRenderable, RGBA, type KeyEvent } from "@opentui/core"
+import { PixelCanvas } from "./engine/pixelcanvas.ts"
 
-const renderer = await createCliRenderer({
-  exitOnCtrlC: true,
-  targetFps: 60,
-  backgroundColor: Palette.bg,
-})
+const TITLE = "N E O N F A L L"
+const SUBTITLE = "a neon roguelite · working title"
 
-const world = new World()
-let fps = 0
+const renderer = await createCliRenderer({ exitOnCtrlC: true, targetFps: 60 })
 
-// Simulation runs in the frame callback (before the render pass)...
-renderer.setFrameCallback(async (dt) => {
-  world.update(dt / 1000)
-  const inst = 1000 / Math.max(dt, 1)
-  fps = fps === 0 ? inst : fps * 0.9 + inst * 0.1
-})
+const canvas = new PixelCanvas(renderer.width, Math.max(1, renderer.height - 2))
+const scratch = new Float32Array(canvas.data.length)
+let t = 0
 
-// ...and a fullscreen layer draws the world on top in its renderAfter hook.
 const layer = new BoxRenderable(renderer, {
   position: "absolute",
   left: 0,
   top: 0,
   width: renderer.width,
   height: renderer.height,
-  backgroundColor: Palette.bg,
   border: false,
-  renderAfter: (buffer) => drawGame(buffer, world, renderer.width, renderer.height, Math.round(fps)),
+  renderAfter: (buffer, dt) => {
+    t += dt / 1000
+    const W = canvas.width
+    const H = canvas.height
+    canvas.clear(4, 6, 14)
+
+    // Drifting neon orbs as an animated backdrop.
+    const palette: [number, number, number][] = [
+      [255, 60, 160],
+      [60, 200, 255],
+      [255, 210, 80],
+      [150, 90, 255],
+    ]
+    for (let i = 0; i < palette.length; i++) {
+      const a = t * (0.4 + i * 0.12) + i * 1.7
+      const ox = W / 2 + Math.cos(a) * W * (0.18 + i * 0.06)
+      const oy = H / 2 + Math.sin(a * 1.1) * H * (0.22 + i * 0.05)
+      const [r, g, b] = palette[i]
+      canvas.addGlow(ox, oy, 10 + Math.sin(t + i) * 2, r, g, b, 0.8)
+      canvas.addDisc(ox, oy, 1.5, 255, 255, 255)
+    }
+    canvas.bloom(0.7, 2, scratch)
+    canvas.blit(buffer, 0, 0)
+
+    // Title + hints (cell-space text on top of the pixel layer).
+    const cx = (renderer.width / 2) | 0
+    const pulse = 180 + ((Math.sin(t * 3) * 0.5 + 0.5) * 75) | 0
+    buffer.drawText(TITLE, cx - ((TITLE.length / 2) | 0), (renderer.height / 2) | 0, RGBA.fromInts(pulse, 255, 240))
+    buffer.drawText(
+      SUBTITLE,
+      cx - ((SUBTITLE.length / 2) | 0),
+      ((renderer.height / 2) | 0) + 1,
+      RGBA.fromInts(120, 140, 200),
+    )
+    const hint = "Q to quit · gameplay coming in the next build"
+    buffer.drawText(hint, cx - ((hint.length / 2) | 0), renderer.height - 1, RGBA.fromInts(90, 110, 150))
+  },
 })
 renderer.root.add(layer)
 
@@ -38,48 +69,9 @@ renderer.on("resize", (w: number, h: number) => {
 })
 
 renderer.keyInput.on("keypress", (key: KeyEvent) => {
-  switch (key.name) {
-    case "w":
-    case "up":
-    case "k":
-      world.requestMove(0, -1)
-      break
-    case "s":
-    case "down":
-    case "j":
-      world.requestMove(0, 1)
-      break
-    case "a":
-    case "left":
-    case "h":
-      world.requestMove(-1, 0)
-      break
-    case "d":
-    case "right":
-    case "l":
-      world.requestMove(1, 0)
-      break
-    case "y":
-      world.requestMove(-1, -1)
-      break
-    case "u":
-      world.requestMove(1, -1)
-      break
-    case "b":
-      world.requestMove(-1, 1)
-      break
-    case "n":
-      world.requestMove(1, 1)
-      break
-    case "space":
-      world.cleave()
-      break
-    case "r":
-      if (world.state === "dead") world.reset()
-      break
-    case "q":
-      renderer.stop()
-      process.exit(0)
+  if (key.name === "q") {
+    renderer.stop()
+    process.exit(0)
   }
 })
 

@@ -1,21 +1,16 @@
-# term_roguelike
+# NEONFALL
 
-A **fast-paced terminal roguelike** with hordes of enemies, built on
-[OpenTUI](https://opentui.com) (Zig render core + Bun).
+> Working title. A **fast-paced, neon-styled action roguelite** that runs in the
+> terminal but renders **real graphics** — code-drawn neon-vector art via a
+> true-colour pixel framebuffer. Inspired by *The Binding of Isaac*: top-down
+> rooms, swarming enemies, build-driven runs, tough bosses — plus a persistent
+> meta upgrade tree and a prestige/reset system.
 
-You are `@`. Caverns fill with monsters that swarm you from every direction in
-real time. Move to survive, bump into enemies to strike them, and unleash a
-`Space` cleave to clear the crowd. Each wave gets faster and denser.
+Built on [OpenTUI](https://opentui.com) + [Bun](https://bun.sh).
 
-```
-☠ TERM ROGUELIKE                                            Wave 3   1:12
-        ##########                          z
-   #####            g   g                 g    @  g
-   #     g    g  g     g   g     O      g       g  g
-   #        g      g       g  g       g      g
-HP ████████████░░░░░░░░ 62/100   Kills 184          Enemies 213
-Move WASD/Arrows/HJKL+YUBN   Space Cleave   R Restart   Q Quit   42 FPS
-```
+> **Status: early development.** The rendering engine is built and validated;
+> gameplay is being implemented in phases. See **[`docs/STATUS.md`](docs/STATUS.md)**
+> for exactly where things stand and what's next.
 
 ## Run
 
@@ -23,60 +18,43 @@ Requires [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`).
 
 ```bash
 bun install
-bun start        # or: bun run dev   (auto-reload)
+bun start          # neon title screen (Phase 0). Needs a real terminal.
+bun run typecheck  # tsc --noEmit
 ```
 
-## Controls
+## The look
 
-| Keys | Action |
-|------|--------|
-| `W A S D` / arrows / `H J K L` | Move (4-directional) |
-| `Y U B N` | Move diagonally |
-| `Space` | Cleave — damage all adjacent enemies (short cooldown) |
-| `R` | Restart (after death) |
-| `Q` / `Ctrl-C` | Quit |
+Instead of glyphs, NEONFALL rasterises glowing vector shapes into an RGB pixel
+buffer and blits it to the terminal using upper-half-block characters (`▀`) —
+each cell becomes two true-colour pixels (fg = top, bg = bottom). Additive
+blending + bloom give the neon glow; soft shadows give 2.5D depth. All art is
+generated in code; there are no asset files. (Renderer: `src/engine/pixelcanvas.ts`.)
 
-## Why it scales to hordes
+## Documentation (start here)
 
-The design choices that keep it smooth with hundreds of enemies on screen:
-
-- **Dijkstra flow field** (`src/world/flowfield.ts`) — one breadth-first search
-  from the player per tick gives *every* enemy its next step. Routing cost is
-  O(map cells), independent of enemy count. This is the key technique.
-- **Struct-of-arrays entities** (`src/world/world.ts`) — enemies live in flat
-  typed arrays (`Int32Array`/`Int16Array`) for cache-friendly iteration, with
-  O(1) swap-remove on death.
-- **Occupancy grid** — an `Int32Array` of the map gives O(1) collision and
-  bump-attack lookups instead of scanning the enemy list.
-- **Throttled flow recompute** — the field is only rebuilt when the player
-  changes tiles.
-
-Measured headless (`bun run scripts/stress.ts`): **655 enemies at ~0.014ms per
-simulation frame** (worst 0.15ms) — roughly 100× under a 60fps budget. The Zig
-core handles rendering; only the visible viewport is drawn each frame.
+| Doc | What it covers |
+|-----|----------------|
+| [`docs/STATUS.md`](docs/STATUS.md) | **Resume here** — current state, next actions |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Vision, pillars, locked decisions, classes, loop |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Code layout, rendering pipeline, systems |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phased build plan |
 
 ## Layout
 
 ```
 src/
-  main.ts            entry: renderer, input, game loop wiring
-  core/
-    colors.ts        central palette
-    rng.ts           seedable PRNG (mulberry32)
-  world/
-    map.ts           cellular-automata cave generation
-    flowfield.ts     BFS distance field (enemy steering)
-    world.ts         simulation: entities, AI, combat, waves, spawning
-  render/
-    render.ts        camera, lighting, HUD, game-over overlay
+  main.ts             entry / neon title screen (Phase 0)
+  engine/
+    pixelcanvas.ts    neon true-colour pixel framebuffer + bloom + blit
 scripts/
-  smoke.ts           headless gameplay sanity test
-  stress.ts          horde performance benchmark
-  boot-check.ts      boots the real TUI to verify the render path
+  render-proto.ts     pixel-pipeline benchmark/demo (run under a pty)
+docs/                 DESIGN · ARCHITECTURE · ROADMAP · STATUS
+legacy/terminal/      archived ASCII/glyph prototype (reference only)
 ```
 
-## Tweaking
+## Legacy prototype
 
-Gameplay constants live at the top of `src/world/world.ts` (player speed,
-damage, enemy archetypes, wave pacing, spawn caps). Colors are in
-`src/core/colors.ts`. Map size is `MAP_W`/`MAP_H` in `world.ts`.
+The original terminal **glyph** roguelike (flow-field hordes, cave generation,
+SoA entities — 655 enemies @ 0.014ms/frame) lives in `legacy/terminal/`. It's
+kept for reference; its flow-field, RNG and map-gen are being ported into the
+new engine.

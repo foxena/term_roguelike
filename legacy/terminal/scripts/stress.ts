@@ -1,6 +1,6 @@
 // Horde stress test: god-mode player so enemies accumulate to large counts,
 // measuring frame time under load. Proves the flow-field approach scales.
-import { World, MAP_W } from "../src/world/world.ts"
+import { World, MAP_W } from "../world/world.ts"
 
 const world = new World(777)
 // Jump difficulty up so the spawn target is large quickly.

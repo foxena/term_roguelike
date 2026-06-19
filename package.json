@@ -7,6 +7,8 @@
   "scripts": {
     "start": "bun run src/main.ts",
     "dev": "bun --watch run src/main.ts",
+    "proto": "bun run scripts/render-proto.ts",
+    "legacy": "bun run legacy/terminal/main.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

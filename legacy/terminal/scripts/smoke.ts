@@ -1,5 +1,5 @@
 // Headless simulation test: exercises the world without a terminal.
-import { World, MAP_W, MAP_H } from "../src/world/world.ts"
+import { World, MAP_W, MAP_H } from "../world/world.ts"
 
 const world = new World(12345)
 console.log(`map ${MAP_W}x${MAP_H}, opening enemies: ${world.count}, player @ ${world.player.x},${world.player.y}`)
