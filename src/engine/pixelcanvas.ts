@@ -52,6 +52,19 @@ export class PixelCanvas {
     }
   }
 
+  /** Set (overwrite) a rectangular region to a solid colour. */
+  fillRect(x0: number, y0: number, x1: number, y1: number, r: number, g: number, b: number): void {
+    const minX = Math.max(0, x0), maxX = Math.min(this.width - 1, x1)
+    const minY = Math.max(0, y0), maxY = Math.min(this.height - 1, y1)
+    const d = this.data, w = this.width
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const i = (y * w + x) * 3
+        d[i] = r; d[i+1] = g; d[i+2] = b
+      }
+    }
+  }
+
   /** Additive single-pixel plot (no bounds cost beyond the check). */
   addPixel(x: number, y: number, r: number, g: number, b: number): void {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return
