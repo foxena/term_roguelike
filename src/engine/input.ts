@@ -1,76 +1,61 @@
 export interface InputState {
-  // held movement (WASD / HJKL / arrows)
-  moveX: number   // -1 0 1
-  moveY: number   // -1 0 1
-  // aim direction (arrow keys for ranged classes)
+  moveX: number          // -1 0 1
+  moveY: number          // -1 0 1
+  moveRefresh: number    // performance.now() of last movement keypress
   aimX: number
   aimY: number
-  // button presses (consumed on read)
-  ability: boolean    // Space
-  interact: boolean   // E
-  map: boolean        // Tab
-  pause: boolean      // Esc
-  confirm: boolean    // Enter
-  // raw for menus
+  ability: boolean
+  interact: boolean
+  map: boolean
+  pause: boolean
+  confirm: boolean
   raw: string
 }
 
+// How long after the last movement keypress we keep moving.
+// Must be longer than key-repeat interval (~30ms) but short enough to feel responsive.
+const MOVE_GRACE_MS = 120
+
 export function makeInput(): InputState {
-  return { moveX: 0, moveY: 0, aimX: 0, aimY: 1, ability: false, interact: false, map: false, pause: false, confirm: false, raw: "" }
+  return { moveX: 0, moveY: 0, moveRefresh: -9999, aimX: 0, aimY: 1,
+           ability: false, interact: false, map: false, pause: false, confirm: false, raw: "" }
 }
 
 export function clearInputFrame(s: InputState): void {
-  s.ability = false
+  s.ability  = false
   s.interact = false
-  s.map = false
-  s.pause = false
-  s.confirm = false
-  s.raw = ""
+  s.map      = false
+  s.pause    = false
+  s.confirm  = false
+  s.raw      = ""
+  // Expire movement if the grace period has elapsed (key was released).
+  if (performance.now() - s.moveRefresh > MOVE_GRACE_MS) {
+    s.moveX = 0
+    s.moveY = 0
+  }
 }
 
-/** Apply a raw keyName string to the input state. */
-export function applyKey(s: InputState, name: string, held: Map<string, boolean>): void {
+/** Call on every keypress (including key-repeat). */
+export function applyKey(s: InputState, name: string): void {
   s.raw = name
+  let isMoveKey = true
   switch (name) {
-    // movement
-    case "w": case "up":    case "k": held.set("up",    true); break
-    case "s": case "down":  case "j": held.set("down",  true); break
-    case "a": case "left":  case "h": held.set("left",  true); break
-    case "d": case "right": case "l": held.set("right", true); break
-    case "y": held.set("upleft",    true); break
-    case "u": held.set("upright",   true); break
-    case "b": held.set("downleft",  true); break
-    case "n": held.set("downright", true); break
+    case "w": case "up":    case "k": s.moveX = 0;  s.moveY = -1; break
+    case "s": case "down":  case "j": s.moveX = 0;  s.moveY =  1; break
+    case "a": case "left":  case "h": s.moveX = -1; s.moveY = 0;  break
+    case "d": case "right": case "l": s.moveX =  1; s.moveY = 0;  break
+    // diagonals
+    case "y": s.moveX = -1; s.moveY = -1; break
+    case "u": s.moveX =  1; s.moveY = -1; break
+    case "b": s.moveX = -1; s.moveY =  1; break
+    case "n": s.moveX =  1; s.moveY =  1; break
     // actions
-    case "space":  s.ability  = true; break
-    case "e":      s.interact = true; break
-    case "tab":    s.map      = true; break
-    case "escape": s.pause    = true; break
-    case "return": s.confirm  = true; break
+    case "space":  s.ability  = true; isMoveKey = false; break
+    case "e":      s.interact = true; isMoveKey = false; break
+    case "tab":    s.map      = true; isMoveKey = false; break
+    case "escape": s.pause    = true; isMoveKey = false; break
+    case "return": s.confirm  = true; isMoveKey = false; break
+    default: isMoveKey = false
   }
-  syncDirs(s, held)
-}
-
-export function releaseKey(s: InputState, name: string, held: Map<string, boolean>): void {
-  switch (name) {
-    case "w": case "up":    case "k": held.delete("up");        break
-    case "s": case "down":  case "j": held.delete("down");      break
-    case "a": case "left":  case "h": held.delete("left");      break
-    case "d": case "right": case "l": held.delete("right");     break
-    case "y": held.delete("upleft");    break
-    case "u": held.delete("upright");   break
-    case "b": held.delete("downleft");  break
-    case "n": held.delete("downright"); break
-  }
-  syncDirs(s, held)
-}
-
-function syncDirs(s: InputState, held: Map<string, boolean>): void {
-  let mx = 0, my = 0
-  if (held.has("left")  || held.has("upleft")   || held.has("downleft"))  mx -= 1
-  if (held.has("right") || held.has("upright")  || held.has("downright")) mx += 1
-  if (held.has("up")    || held.has("upleft")   || held.has("upright"))   my -= 1
-  if (held.has("down")  || held.has("downleft") || held.has("downright")) my += 1
-  s.moveX = mx
-  s.moveY = my
+  if (isMoveKey) s.moveRefresh = performance.now()
 }

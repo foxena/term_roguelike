@@ -2,7 +2,7 @@ import { createCliRenderer, BoxRenderable, RGBA } from "@opentui/core"
 import type { KeyEvent } from "@opentui/core"
 import { PixelCanvas } from "./engine/pixelcanvas.ts"
 import { SceneStack } from "./engine/scene.ts"
-import { makeInput, clearInputFrame, applyKey, releaseKey } from "./engine/input.ts"
+import { makeInput, clearInputFrame, applyKey } from "./engine/input.ts"
 import { GameScene } from "./game/gamescene.ts"
 import { C } from "./engine/colors.ts"
 import { makeMetaProgress, META_NODES, canUnlock, unlockNode, type MetaProgress } from "./game/progression/metatree.ts"
@@ -26,7 +26,6 @@ const CLASS_DESC: Record<string, string> = {
 const renderer = await createCliRenderer({ exitOnCtrlC: true, targetFps: 60 })
 const { meta: metaProgress, stats: gameStats } = await loadGame()
 const input = makeInput()
-const heldKeys = new Map<string, boolean>()
 const scenes = new SceneStack()
 let fps = 60
 let scratch: Float32Array | null = null
@@ -216,8 +215,9 @@ renderer.keyInput.on("keypress", async (key: KeyEvent) => {
     }
     if (k === "c") { screen = "codex"; return }
     if (k === "?" ) { screen = "help"; return }
-    if (k === "escape" || k === "p") { applyKey(input, "escape", heldKeys); return }
-    applyKey(input, k, heldKeys)
+    if (k === "escape" || k === "p") { applyKey(input, "escape"); return }
+    applyKey(input, k)
+    // Arrow keys also set the aim direction for ranged classes
     if (["up","down","left","right"].includes(k)) {
       input.aimX = k === "left" ? -1 : k === "right" ? 1 : 0
       input.aimY = k === "up"  ? -1 : k === "down"  ? 1 : 0
@@ -225,5 +225,4 @@ renderer.keyInput.on("keypress", async (key: KeyEvent) => {
   }
 })
 
-renderer.keyInput.on("keyrelease", (key: KeyEvent) => { releaseKey(input, key.name, heldKeys) })
 renderer.start()
