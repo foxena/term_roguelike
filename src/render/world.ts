@@ -7,6 +7,7 @@ import { ENEMY_DEFS } from "../game/entities.ts"
 import type { Particles } from "../engine/particles.ts"
 import { C } from "../engine/colors.ts"
 import { drawClassAmbientVFX } from "../game/classes/classvfx.ts"
+import type { BiomeDef } from "../game/biomes.ts"
 
 const S = ROOM_SCALE
 
@@ -16,7 +17,7 @@ function drawFloorTile(canvas: PixelCanvas, px: number, py: number, lite: boolea
 }
 
 /** Draw the room floor tiles and walls into the pixel canvas. */
-export function drawRoom(canvas: PixelCanvas, room: RoomDef, cam: Camera): void {
+export function drawRoom(canvas: PixelCanvas, room: RoomDef, cam: Camera, biome?: BiomeDef): void {
   const { width, height, tiles } = room
   for (let ty = 0; ty < height; ty++) {
     for (let tx = 0; tx < width; tx++) {
@@ -25,18 +26,18 @@ export function drawRoom(canvas: PixelCanvas, room: RoomDef, cam: Camera): void 
       const px = cam.toPixX(wx), py = cam.toPixY(wy)
       if (px + S < 0 || py + S < 0 || px >= canvas.width || py >= canvas.height) continue
 
+      const bWR = biome?.wallR ?? 30, bWG = biome?.wallG ?? 40, bWB = biome?.wallB ?? 90
+      const bFR = biome?.floorR ?? 8,  bFG = biome?.floorG ?? 10, bFB = biome?.floorB ?? 22
+      const bAR = biome?.ambientR ?? 40, bAG = biome?.ambientG ?? 60, bAB = biome?.ambientB ?? 120
       if (t === TILE.WALL) {
-        // wall: glowing neon border
-        canvas.fillRect(px, py, px + S - 1, py + S - 1, 12, 16, 36)
-        canvas.addGlow(px + S/2, py + S/2, S/2, 40, 60, 120, 0.5)
+        canvas.fillRect(px, py, px + S - 1, py + S - 1, bWR*0.4|0, bWG*0.4|0, bWB*0.4|0)
+        canvas.addGlow(px + S/2, py + S/2, S/2, bAR, bAG, bAB, 0.4)
       } else if (t === TILE.FLOOR) {
-        canvas.fillRect(px, py, px + S - 1, py + S - 1, 6, 8, 18)
-        // subtle grid lines
-        if (tx % 3 === 0) canvas.addLine(px, py, px, py + S - 1, 10, 14, 28)
-        if (ty % 3 === 0) canvas.addLine(px, py, px + S - 1, py, 10, 14, 28)
+        canvas.fillRect(px, py, px + S - 1, py + S - 1, bFR, bFG, bFB)
+        if (tx % 3 === 0) canvas.addLine(px, py, px, py + S - 1, bAR*0.25|0, bAG*0.25|0, bAB*0.25|0)
+        if (ty % 3 === 0) canvas.addLine(px, py, px + S - 1, py, bAR*0.25|0, bAG*0.25|0, bAB*0.25|0)
       } else {
-        // door — glowing aperture
-        canvas.fillRect(px, py, px + S - 1, py + S - 1, 6, 8, 18)
+        canvas.fillRect(px, py, px + S - 1, py + S - 1, bFR, bFG, bFB)
         canvas.addGlow(px + S/2, py + S/2, S/2, C.cyan.r, C.cyan.g, C.cyan.b, 0.4)
       }
     }

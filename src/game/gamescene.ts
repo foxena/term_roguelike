@@ -24,6 +24,7 @@ import { pickItems, applyItem, baseStats, type ItemDef, type PlayerStats } from 
 import { drawItemRoom, drawShopRoom } from "../render/screens.ts"
 import { BossSystem } from "./bosses/bosssystem.ts"
 import { RGBA } from "@opentui/core"
+import { getBiome, type BiomeDef } from "./biomes.ts"
 
 const FIXED_DT = 1 / 60
 const FLOW_RETICK = 0.22
@@ -65,6 +66,7 @@ export class GameScene implements Scene {
   private waveNum = 0
   private roomEnemyCount = 0
   private boss = new BossSystem()
+  private biome: BiomeDef = getBiome(1)
   // Phase 4: items
   private stats: PlayerStats = baseStats()
   private heldItems: ItemDef[] = []
@@ -88,6 +90,7 @@ export class GameScene implements Scene {
     this.flow = new FlowField(this.currentRoom.width * this.currentRoom.height)
     this._recomputeFlow()
     this.run = makeRun()
+    this.biome = getBiome(1)
     this.t = 0; this.paused = false; this.state = "playing"; this.waveNum = 0
     this.enemies.count = 0; this.projs.count = 0; this.particles.count = 0
     this.spawnTimer = 1.5; this.stats = baseStats(); this.heldItems = []
@@ -236,7 +239,13 @@ export class GameScene implements Scene {
         this._enterRoom(nextFloorRoom, opposite[dir])
         this.state = "playing"
         this.transDir = null
-        if (this.currentFloorRoom.type === "boss") this.run.floor++
+        if (this.currentFloorRoom.type === "boss") {
+          this.run.floor++
+          this.biome = getBiome(this.run.floor)
+          this.floor = generateFloor(this.rng, this.run.floor)
+          const startRoom = [...this.floor.rooms.values()].find(r => r.id === this.floor.startId)!
+          this._enterRoom(startRoom, null)
+        }
       }
       return
     }
@@ -433,7 +442,6 @@ export class GameScene implements Scene {
       this.scratch = new Float32Array(canvas.data.length)
 
     this.camera.follow(this.player.x, this.player.y, canvas.width, canvas.height)
-    canvas.clear(C.bg.r, C.bg.g, C.bg.b)
 
     // Transition flash
     if (this.state === "transition") {
@@ -444,7 +452,8 @@ export class GameScene implements Scene {
       return
     }
 
-    drawRoom(canvas, this.currentRoom, this.camera)
+    canvas.clear(this.biome.bgR, this.biome.bgG, this.biome.bgB)
+    drawRoom(canvas, this.currentRoom, this.camera, this.biome)
     this.particles.draw(canvas, this.camera.x + this.camera.shakeX, this.camera.y + this.camera.shakeY)
     drawEnemies(canvas, this.enemies, this.camera)
     drawProjectiles(canvas, this.projs, this.camera)
