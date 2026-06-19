@@ -448,7 +448,7 @@ export class GameScene implements Scene {
     this.particles.draw(canvas, this.camera.x + this.camera.shakeX, this.camera.y + this.camera.shakeY)
     drawEnemies(canvas, this.enemies, this.camera)
     drawProjectiles(canvas, this.projs, this.camera)
-    drawPlayer(canvas, this.player, this.camera, this.t)
+    drawPlayer(canvas, this.player, this.camera, this.t, this.particles)
     this.boss.draw(canvas, this.camera.x + this.camera.shakeX, this.camera.y + this.camera.shakeY, this.t)
     canvas.bloom(0.55, 2, this.scratch)
     canvas.blit(buffer, 0, 0)

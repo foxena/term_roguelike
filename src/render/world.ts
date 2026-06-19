@@ -6,6 +6,7 @@ import type { Player, EnemyPool, ProjectilePool } from "../game/entities.ts"
 import { ENEMY_DEFS } from "../game/entities.ts"
 import type { Particles } from "../engine/particles.ts"
 import { C } from "../engine/colors.ts"
+import { drawClassAmbientVFX } from "../game/classes/classvfx.ts"
 
 const S = ROOM_SCALE
 
@@ -69,8 +70,9 @@ export function drawProjectiles(canvas: PixelCanvas, projs: ProjectilePool, cam:
   }
 }
 
-/** Draw the player with class-themed VFX. */
-export function drawPlayer(canvas: PixelCanvas, player: Player, cam: Camera, t: number): void {
+/** Draw the player with class-themed VFX (core + ambient). */
+export function drawPlayer(canvas: PixelCanvas, player: Player, cam: Camera, t: number, particles?: Particles): void {
+  if (particles) drawClassAmbientVFX(canvas, particles, player, cam, t)
   const px = cam.toPixX(player.x), py = cam.toPixY(player.y)
   const flash = player.invuln > 0 && Math.floor(player.invuln * 10) % 2 === 0
 
