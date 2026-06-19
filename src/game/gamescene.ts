@@ -22,6 +22,8 @@ import { spawnClassProjectile, spawnClassAbility } from "./classes/classactions.
 import { C } from "../engine/colors.ts"
 import { pickItems, applyItem, baseStats, type ItemDef, type PlayerStats } from "./items.ts"
 import { drawItemRoom, drawShopRoom } from "../render/screens.ts"
+import { BossSystem } from "./bosses/bosssystem.ts"
+import { RGBA } from "@opentui/core"
 
 const FIXED_DT = 1 / 60
 const FLOW_RETICK = 0.22
@@ -62,6 +64,7 @@ export class GameScene implements Scene {
   private fps = 60
   private waveNum = 0
   private roomEnemyCount = 0
+  private boss = new BossSystem()
   // Phase 4: items
   private stats: PlayerStats = baseStats()
   private heldItems: ItemDef[] = []
@@ -109,7 +112,11 @@ export class GameScene implements Scene {
     this._recomputeFlow()
 
     if (floorRoom.type === "combat" && !floorRoom.cleared) this._spawnWave(6 + this.run.roomsCleared * 2)
-    if (floorRoom.type === "boss" && !floorRoom.cleared) this._spawnWave(12)
+    if (floorRoom.type === "boss" && !floorRoom.cleared) {
+      const cx = (this.currentRoom.width / 2) * ROOM_SCALE
+      const cy = (this.currentRoom.height / 2) * ROOM_SCALE * 0.35
+      this.boss.spawn(this.run.floor, cx, cy)
+    }
     if (floorRoom.type === "treasure" && !floorRoom.cleared) {
       floorRoom.cleared = true
       this.uiItems = pickItems(3, this.rng)
@@ -313,6 +320,7 @@ export class GameScene implements Scene {
     }
 
     this.enemies.update(dt, this.flow, this.currentRoom, p, this.projs, this.rng)
+    this.boss.update(dt, p, this.projs, this.particles, this.camera, this.rng)
     this.projs.update(dt, this.currentRoom)
     this.particles.update(dt)
     this._resolveCombat(dt)
@@ -347,6 +355,26 @@ export class GameScene implements Scene {
       hash.insert(i, enemies.x[i], enemies.y[i], ENEMY_DEFS[enemies.type[i]].radius)
     }
     const candidates: number[] = []
+
+    // boss hit detection
+    if (this.boss.alive && this.boss.state && this.boss.def) {
+      let pi2 = 0
+      while (pi2 < projs.count) {
+        if (projs.fromPlayer[pi2] === 1 &&
+            overlaps(projs.x[pi2], projs.y[pi2], projs.radius[pi2], this.boss.state.x, this.boss.state.y, this.boss.def.radius)) {
+          const died = this.boss.hurt(projs.dmg[pi2], particles, camera, run)
+          this.dmgNums.spawn(this.boss.state.x, this.boss.state.y - 10, projs.dmg[pi2], 255, 240, 80)
+          this.hitStop.trigger(0.04)
+          projs.remove(pi2)
+          if (died) {
+            this.currentFloorRoom.cleared = true; run.roomsCleared++
+            this.uiItems = pickItems(3, this.rng); this.uiSelected = 0; this.uiState = "treasure"
+          }
+          continue
+        }
+        pi2++
+      }
+    }
 
     let pi = 0
     while (pi < projs.count) {
@@ -421,12 +449,25 @@ export class GameScene implements Scene {
     drawEnemies(canvas, this.enemies, this.camera)
     drawProjectiles(canvas, this.projs, this.camera)
     drawPlayer(canvas, this.player, this.camera, this.t)
+    this.boss.draw(canvas, this.camera.x + this.camera.shakeX, this.camera.y + this.camera.shakeY, this.t)
     canvas.bloom(0.55, 2, this.scratch)
     canvas.blit(buffer, 0, 0)
 
     const camX = this.camera.x + this.camera.shakeX, camY = this.camera.y + this.camera.shakeY
     this.dmgNums.draw(buffer, camX, camY, ROOM_SCALE)
     drawMinimap(buffer, this.floor, this.currentFloorRoom.id, cW, cH)
+    // Boss name + HP bar
+    if (this.boss.alive) {
+      const bname = this.boss.currentName
+      const bx = ((cW - bname.length) / 2) | 0
+      buffer.drawText(bname, bx, 0, RGBA.fromInts(255, 80, 80))
+      const bbarW = Math.min(40, cW - 4)
+      const bfilled = Math.round(this.boss.hpRatio * bbarW)
+      for (let bi = 0; bi < bbarW; bi++) {
+        buffer.drawText(bi < bfilled ? "█" : "░", ((cW - bbarW) / 2 | 0) + bi, 1,
+                        bi < bfilled ? RGBA.fromInts(255,60,60) : RGBA.fromInts(60,30,30))
+      }
+    }
     drawHud(buffer, this.player, this.run, this.fps, cW, cH)
     if (this.uiState === "treasure") drawItemRoom(buffer, this.uiItems, this.uiSelected, cW, cH, this.run.gold)
     if (this.uiState === "shop") drawShopRoom(buffer, this.uiItems, this.uiPrices, this.uiSelected, cW, cH, this.run.gold)
