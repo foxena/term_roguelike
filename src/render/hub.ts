@@ -3,6 +3,7 @@ import type { MetaProgress } from "../game/progression/metatree.ts"
 import { META_NODES, canUnlock, computeMetaBonus } from "../game/progression/metatree.ts"
 import { prestigeCost, PRESTIGE_PERKS } from "../game/progression/prestige.ts"
 import type { GameStats } from "../game/progression/save.ts"
+// GameStats is now a richer type with Sets — drawHub accesses primitive fields only
 import type { PixelCanvas } from "../engine/pixelcanvas.ts"
 import { C } from "../engine/colors.ts"
 
@@ -101,9 +102,13 @@ export function drawHub(
       `Total Runs     : ${gameStats.totalRuns}`,
       `Total Kills    : ${gameStats.totalKills}`,
       `Best Floor     : ${gameStats.bestFloor}`,
+      `Bosses Killed  : ${gameStats.bossesKilled}`,
+      `Items Collected: ${gameStats.itemsCollected}`,
       `Total Essence  : ${meta.essence}`,
       `Prestige Rank  : ${meta.totalPrestige}`,
-      `Classes Unlocked: ${[...meta.unlockedClasses].join(", ")}`,
+      `Achievements   : ${gameStats.achievements.size}/14`,
+      `Classes Played : ${[...gameStats.classesPlayed].join(", ") || "none"}`,
+      `Unlocked       : ${[...meta.unlockedClasses].join(", ")}`,
     ]
     for (let i = 0; i < lines.length; i++) buffer.drawText(lines[i], 4, startY+2+i, R_TEXT)
     buffer.drawText("TAB switch tab  R run  Q quit", 1, cellH-1, R_DIM)
