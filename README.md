@@ -1,60 +1,58 @@
 # NEONFALL
 
-> Working title. A **fast-paced, neon-styled action roguelite** that runs in the
-> terminal but renders **real graphics** — code-drawn neon-vector art via a
-> true-colour pixel framebuffer. Inspired by *The Binding of Isaac*: top-down
-> rooms, swarming enemies, build-driven runs, tough bosses — plus a persistent
-> meta upgrade tree and a prestige/reset system.
+A **fast-paced, neon-styled action roguelite** that runs in the terminal but renders **real graphics** — code-drawn neon-vector art via a true-colour pixel framebuffer, with bloom, particles, and dynamic glow. Inspired by *The Binding of Isaac*.
 
-Built on [OpenTUI](https://opentui.com) + [Bun](https://bun.sh).
+Built on [OpenTUI](https://opentui.com) + [Bun](https://bun.sh). Fully playable.
 
-> **Status: early development.** The rendering engine is built and validated;
-> gameplay is being implemented in phases. See **[`docs/STATUS.md`](docs/STATUS.md)**
-> for exactly where things stand and what's next.
+## Features
+
+- **7 playable classes**: Warrior, Mage, Archer, Necromancer, Paladin, Rogue, Druid — each with unique attacks, abilities, and per-class VFX (embers, crystal runes, soul wisps, vine tendrils, holy aura, afterimages, bow trails)
+- **5 enemy types**: Chaser, Swarmer, Brute, Shooter, Exploder — steered by a BFS flow-field (scales to hordes)
+- **3 multi-phase bosses**: The Surge, The Warden, The Rift — with unique attack patterns and phase transitions
+- **Procedural floors**: BFS room graph (combat/treasure/shop/boss/secret/start), 5 biome themes
+- **20 items** (common → legendary): damage, speed, fire-rate, pierce, crit, regen, and more
+- **Meta progression**: 15 meta-tree nodes, Essence currency, persistent across deaths
+- **Prestige system**: reset the tree for permanent global multipliers — escalating and repeatable
+- **14 achievements**, codex browser, help screen, toast notifications
+- **Saved to** `~/.term_roguelike/save.json`
 
 ## Run
 
-Requires [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`).
+Requires [Bun](https://bun.sh):
 
 ```bash
+curl -fsSL https://bun.sh/install | bash
 bun install
-bun start          # neon title screen (Phase 0). Needs a real terminal.
-bun run typecheck  # tsc --noEmit
+bun start
 ```
 
-## The look
+## Controls
 
-Instead of glyphs, NEONFALL rasterises glowing vector shapes into an RGB pixel
-buffer and blits it to the terminal using upper-half-block characters (`▀`) —
-each cell becomes two true-colour pixels (fg = top, bg = bottom). Additive
-blending + bloom give the neon glow; soft shadows give 2.5D depth. All art is
-generated in code; there are no asset files. (Renderer: `src/engine/pixelcanvas.ts`.)
+| Key | Action |
+|-----|--------|
+| `WASD` / `HJKL` | Move |
+| Arrow keys | Aim + fire (hold to attack continuously) |
+| `Space` | Class ability |
+| `E` / Enter | Confirm in menus |
+| `Tab` | Toggle minimap / hub tab |
+| `Esc` / `P` | Pause |
+| `R` | Restart (from death — returns to hub and awards Essence) |
+| `H` | Hub (from class select) |
+| `C` | Codex / achievements |
+| `?` | Help screen |
+| `Q` | Quit + save |
 
-## Documentation (start here)
+## How it works (the rendering)
 
-| Doc | What it covers |
-|-----|----------------|
-| [`docs/STATUS.md`](docs/STATUS.md) | **Resume here** — current state, next actions |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | Vision, pillars, locked decisions, classes, loop |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Code layout, rendering pipeline, systems |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phased build plan |
+Instead of terminal glyphs, the game rasterises glowing vector shapes into an RGB pixel buffer and blits it to the terminal using **upper-half-block characters** (`▀`) — each cell = two true-colour pixels. Additive blending + bloom creates the neon glow. All art is code-drawn; there are no asset files.
 
-## Layout
+**Performance**: ~1.4ms/frame for the neon renderer; simulation handles 600+ enemies at ~0.014ms/frame via a Dijkstra flow-field.
 
-```
-src/
-  main.ts             entry / neon title screen (Phase 0)
-  engine/
-    pixelcanvas.ts    neon true-colour pixel framebuffer + bloom + blit
-scripts/
-  render-proto.ts     pixel-pipeline benchmark/demo (run under a pty)
-docs/                 DESIGN · ARCHITECTURE · ROADMAP · STATUS
-legacy/terminal/      archived ASCII/glyph prototype (reference only)
-```
+## Documentation
 
-## Legacy prototype
-
-The original terminal **glyph** roguelike (flow-field hordes, cave generation,
-SoA entities — 655 enemies @ 0.014ms/frame) lives in `legacy/terminal/`. It's
-kept for reference; its flow-field, RNG and map-gen are being ported into the
-new engine.
+| Doc | Contents |
+|-----|----------|
+| [`docs/STATUS.md`](docs/STATUS.md) | **Resume here** — current state, file map, open work |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Vision, pillars, locked decisions, class roster |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Code layout, rendering pipeline, system designs |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phase plan (all phases implemented) |

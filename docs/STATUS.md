@@ -1,86 +1,123 @@
 # NEONFALL — Status (resume here)
 
-> **Read this first when resuming.** It is the live tracker of where we are and
-> what to do next. Update it at the end of every work session. See `DESIGN.md`
-> (what/why), `ARCHITECTURE.md` (how), `ROADMAP.md` (phase plan).
+> **Read this first when resuming.** The live tracker of where things stand.
+> See `DESIGN.md` (what/why), `ARCHITECTURE.md` (how), `ROADMAP.md` (phase plan).
 
-_Last updated: 2026-06-19 — end of Phase 0._
+_Last updated: 2026-06-19 — all phases 0–10 complete._
 
 ## TL;DR for a returning model
 
-We are building **NEONFALL**, a fast-paced neon roguelite (Binding-of-Isaac
-inspired) that runs in the terminal via OpenTUI but renders **real graphics**
-(code-drawn neon-vector, true-colour pixel framebuffer). Direction and tech are
-**locked and validated**. Gameplay is **not built yet** — next up is **Phase 1
-(engine core & vertical slice)**.
+**All 10 phases are implemented and committed.** The game is fully playable:
+class-select → run → collect items → die/beat boss → return to hub →
+spend Essence on meta tree → optionally prestige → play again.
 
-## Current phase: ✅ Phase 0 complete → ▶ start Phase 1
+`bun start` launches the game. `bun run typecheck` is clean.
 
-### Done
-- Tech direction locked (see DESIGN §3). All key decisions answered by the user.
-- **`src/engine/pixelcanvas.ts`** — working neon pixel renderer (half-block,
-  true colour, additive glow, bloom). Validated live + benchmarked (~1.37ms/
-  frame at 80×46px, ~12× headroom).
-- **`src/main.ts`** — Phase-0 neon title screen (`bun start`).
-- **`scripts/render-proto.ts`** — pipeline benchmark/demo (run under a pty).
-- Terminal glyph prototype archived to **`legacy/terminal/`** (reference; its
-  flow-field / RNG / mapgen are reusable — see ARCHITECTURE §Reusable).
-- Docs written: DESIGN, ARCHITECTURE, ROADMAP, STATUS.
+## ✅ All phases complete
 
-### Not started
-- Everything gameplay: engine loop, scenes, input, camera, particles, entities,
-  combat, classes, rooms, items, bosses, meta tree, prestige, save system.
+| Phase | Status | Key deliverables |
+|-------|--------|-----------------|
+| 0 | ✅ | PixelCanvas neon renderer, docs, archive |
+| 1 | ✅ | Engine (loop/input/camera/particles/flow-field), 7 classes, class-select |
+| 2 | ✅ | Spatial hash, hit-stop, damage numbers, status effects, combat juice |
+| 3 | ✅ | BFS floor graph, 6 room types, room transitions, minimap |
+| 4 | ✅ | 20 items (common→legendary), treasure rooms, shops, HP regen |
+| 5 | ✅ | 3 bosses (Surge/Warden/Rift), multi-phase, attacks, orbiting VFX |
+| 6+7 | ✅ | 15 meta-tree nodes, prestige, ~/.term_roguelike/save.json, hub UI |
+| 8 | ✅ | Per-class ambient VFX (ember ring, crystal runes, soul wisps, etc.) |
+| 9 | ✅ | 5 biomes (colour palettes per floor), floor progression |
+| 10 | ✅ | 14 achievements, codex screen, help screen, toast notifications |
 
-## ▶ Next actions (Phase 1, in order)
+## What exists
 
-1. `src/engine/rng.ts` — port mulberry32 from `legacy/terminal/core/rng.ts`.
-2. `src/engine/colors.ts` — neon palette + helpers (hex→rgb ints).
-3. `src/engine/scene.ts` + `src/engine/loop.ts` — scene stack; fixed-timestep
-   update (accumulator) + per-frame render. Remember: OpenTUI `deltaTime` is **ms**.
-4. `src/engine/input.ts` — map keys to an `InputState` (held move dirs WASD,
-   aim dirs arrows). Key-repeat grace pattern is in the legacy world (`requestMove`).
-5. `src/engine/camera.ts` — world→canvas transform, follow player, screen shake.
-6. `src/engine/particles.ts` — pooled SoA particle system.
-7. `src/game/entities.ts` — continuous player (float pos/vel) + wall collision
-   against a room tile grid.
-8. One enemy type steered by a ported flow-field (`legacy/terminal/world/flowfield.ts`).
-9. Basic attack (projectile + melee), hit → death → particle burst.
-10. `src/render/world.ts` — draw room + entities + VFX into the PixelCanvas;
-    minimal `src/render/hud.ts` (health).
-- **Exit criteria**: walk a neon character around one room, fight one enemy
-  type, see particles/juice, all runnable via `bun start` and typecheck-clean.
+```
+src/
+  main.ts                   entry: screen-state machine (class_select/hub/game/codex/help)
+  engine/
+    pixelcanvas.ts          neon pixel renderer (glow/disc/line/bloom/blit/fillRect)
+    rng.ts colors.ts        utilities
+    input.ts camera.ts      input state + camera
+    particles.ts            SoA pooled particles
+    flowfield.ts            BFS distance field
+    scene.ts                scene stack
+    spatialhash.ts          broad-phase collision
+    hitstop.ts              frame-freeze juice
+    damagenumbers.ts        floating damage text
+  game/
+    room.ts                 tile-grid rooms
+    floor.ts                procedural BFS floor graph
+    biomes.ts               5 floor themes
+    entities.ts             Player, EnemyPool SoA (5 types), ProjectilePool SoA
+    combat.ts               circle hits, melee arc, hurt helpers
+    statuseffects.ts        burn/poison/slow/stun/freeze
+    items.ts                20 items, PlayerStats, applyItem
+    achievements.ts         14 achievements with check functions
+    gamescene.ts            main game loop (ties everything together)
+    classes/
+      classactions.ts       7 class primaries + abilities
+      classvfx.ts           7 class ambient VFX (unique per class)
+    bosses/
+      bossdefs.ts           3 boss defs (attacks, phases, rewards)
+      bosssystem.ts         boss update/draw/hurt loop
+    progression/
+      run.ts                RunStats
+      metatree.ts           15 meta nodes, MetaProgress, computeMetaBonus
+      prestige.ts           prestige reset + escalating cost
+      save.ts               async load/save ~/.term_roguelike/save.json
+  render/
+    world.ts                room/enemy/projectile/player draw (biome-aware)
+    hud.ts                  HP bar, ability CD, death/pause overlays
+    minimap.ts              top-right room-type minimap
+    hub.ts                  3-tab hub (tree/prestige/stats)
+    codex.ts                achievements browser + help screen
+    screens.ts              treasure/shop/run-summary overlays
+```
 
-## How to run / verify
+## How to run
 
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"
 cd ~/Documents/apps/term_roguelike
-bun install                 # if needed
-bun start                   # play/preview (needs a real terminal/TTY)
-bun run typecheck           # tsc --noEmit, must stay clean
-
-# Interactive TUI can be smoke-tested headlessly under a pty:
-script -q /dev/null bun run scripts/render-proto.ts >/tmp/out 2>&1
-# (the legacy headless sim/stress tests live in legacy/terminal/scripts/)
+bun install       # if needed
+bun start         # play (needs a real TTY)
+bun run typecheck # must stay clean
 ```
+
+## Controls (quick ref)
+
+```
+WASD / HJKL       Move
+Arrow keys         Aim + fire (hold to attack; melee classes swing in dir)
+Space              Class ability (cooldown varies)
+E / Enter          Confirm in UI (item/shop selection)
+Tab                Minimap toggle / hub tab switch
+Esc / P            Pause
+R                  Restart from death → return to hub (awards essence)
+H                  Hub (from class select)
+C                  Codex/achievements
+?                  Help screen
+Q                  Quit + save
+```
+
+## Open questions / nice-to-haves
+
+- Sound: OpenTUI has an audio module (`@opentui/core` audio exports) — adding
+  SFX/music would complete the experience. Not implemented yet.
+- More bosses/items: the data-driven architecture makes this straightforward.
+- Minion system for Necromancer: currently ability fires bolts; true minions
+  (allied entities that persist) would make Necro more distinct.
+- Daily seed / challenge modes: seeded RNG is already wired (RNG class), just
+  needs a UI to enter a seed.
+- Mouse support: OpenTUI supports mouse events — not wired yet.
+- Performance at very large terminals: current half-block blit is O(cells).
+  For terminals wider than ~200 cols, consider `drawSuperSampleBuffer`.
 
 ## Important facts / gotchas
 
-- **Renderer not glyphs**: draw via `PixelCanvas`, blit with half-blocks. Text/
-  HUD goes on top with `buffer.drawText`.
-- **deltaTime is milliseconds** (OpenTUI). Convert to seconds in the sim.
-- **Per-frame allocations**: keep ~zero in hot paths (reuse RGBA/buffers; SoA
-  typed arrays + swap-remove for enemies/projectiles/particles).
-- **`drawChar(codepoint:number, x, y, fg, bg)`** is the fast per-cell path;
-  `0x2580` is ▀ (upper half block).
-- **Git identity**: commits are globally set to `Elan Lunder
-  <94677097+foxena@users.noreply.github.com>` (GitHub account foxena). Verify
-  before committing. Remote: `foxena/term_roguelike` (public).
-- **Working title NEONFALL** is a placeholder; user may rename.
-
-## Open questions for the user (non-blocking)
-- Game name (keep NEONFALL or rename?).
-- Run length target (floors per run, rooms per floor) — assumed ~5–8 floors,
-  ~8–12 rooms/floor until told otherwise.
-- Pixel-art vs pure code-drawn was answered (code-drawn); revisit only if the
-  look needs more fidelity.
+- **deltaTime from OpenTUI is in milliseconds**. Divide by 1000 before simulation.
+- **Per-frame allocations**: keep ~zero in hot paths — SoA + swap-remove.
+- **`drawChar(0x2580, x, y, fg, bg)`** is the half-block blit primitive.
+- **Git identity**: globally set to `Elan Lunder <94677097+foxena@users.noreply.github.com>`.
+  Remote: `foxena/term_roguelike` (public). Verify `git config user.email` before committing.
+- **Working title NEONFALL** — user may rename.
+- Save file: `~/.term_roguelike/save.json` (created on first quit).
